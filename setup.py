@@ -4,12 +4,12 @@
 Author: rjayapalan
 Created: March 11, 2022
 """
-from setuptools import setup
 import os
+
+from setuptools import setup
 
 
 def get_long_desc() -> str:
-
     if not os.path.isfile("README.rst"):
         return ""
 
@@ -21,7 +21,7 @@ def get_long_desc() -> str:
 
 setup(
     name="filesplit",
-    version="4.0.1",
+    version="4.1.0",
     description="Python module that is capable of splitting files and merging it back.",
     long_description=get_long_desc(),
     author="Ramprakash Jayapalan",
@@ -36,11 +36,11 @@ setup(
         "Programming Language :: Python :: 3 :: Only",
         "License :: OSI Approved :: MIT License",
     ],
-    package_dir={'filesplit': 'src'},
-    packages=['filesplit', 'filesplit.common'],
-    python_requires='>=3, <4',
+    package_dir={"filesplit": "src"},
+    packages=["filesplit", "filesplit.common"],
+    python_requires=">=3, <4",
     project_urls={
-        'Bug Reports': 'https://github.com/ram-jayapalan/filesplit/issues',
-        'Source': 'https://github.com/ram-jayapalan/filesplit',
+        "Bug Reports": "https://github.com/ram-jayapalan/filesplit/issues",
+        "Source": "https://github.com/ram-jayapalan/filesplit",
     },
 )

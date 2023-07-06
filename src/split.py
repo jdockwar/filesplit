@@ -4,13 +4,13 @@
 Author: rjayapalan
 Created: March 05, 2022
 """
-from typing import Callable, Optional
-from io import BytesIO
+import csv
+import logging
 import ntpath
 import os
-import csv
 import time
-import logging
+from io import BytesIO
+from typing import Callable, Optional
 
 from .common import constant, error
 
@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 
 
 class Split:
-
     def __init__(self, inputfile: str, outputdir: str) -> None:
         """Constructor
 
@@ -26,13 +25,15 @@ class Split:
             inputfile (str): Path to the original file
             outputdir (str): Output directory path to write the file splits
         """
-        log.info('Starting file split process')
+        log.info("Starting file split process")
         if not os.path.exists(inputfile):
             raise FileNotFoundError(
-                f'Given input file path "{inputfile}" does not exist.')
+                f'Given input file path "{inputfile}" does not exist.'
+            )
         if not os.path.isdir(outputdir):
             raise NotADirectoryError(
-                f'Given output directory path "{outputdir}" is not a valid directory.')
+                f'Given output directory path "{outputdir}" is not a valid directory.'
+            )
         self._terminate = False
         self._inputfile = inputfile
         self._outputdir = outputdir
@@ -139,7 +140,7 @@ class Split:
         """
         filename = ntpath.split(self.inputfile)[1]
         fname, ext = ntpath.splitext(filename)
-        splitfilename = f'{fname}{self.splitdelimiter}{splitnum}{ext}'
+        splitfilename = f"{fname}{self.splitdelimiter}{splitnum}{ext}"
         return splitfilename
 
     def _getmanifestpath(self) -> str:
@@ -148,11 +149,18 @@ class Split:
         Returns:
             str: Manifest filepath
         """
-        return os.path.join(self.outputdir, self.manfilename)
+        return os.path.join(os.path.dirname(self.inputfile), self.manfilename)
 
-    def _process(self, reader: BytesIO, limit: int,
-                 splitby: str, newline: bool, includeheader: bool,
-                 callback: Optional[Callable], **kwargs) -> None:
+    def _process(
+        self,
+        reader: BytesIO,
+        limit: int,
+        splitby: str,
+        newline: bool,
+        includeheader: bool,
+        callback: Optional[Callable],
+        **kwargs,
+    ) -> None:
         """Process that handles the file split
 
         Args:
@@ -167,31 +175,31 @@ class Split:
         Raises:
             ValueError: Unsupported split type
         """
-        splitnum: int = kwargs.get('splitnum', 1)
-        carryover: bytes = kwargs.get('carryover', None)
-        header: bytes = kwargs.get('header', None)
-        manifest: csv.DictWriter = kwargs.get('manifest', None)
+        splitnum: int = kwargs.get("splitnum", 1)
+        carryover: bytes = kwargs.get("carryover", None)
+        header: bytes = kwargs.get("header", None)
+        manifest: csv.DictWriter = kwargs.get("manifest", None)
         processed = 0
         splitfilename = self._getnextsplit(splitnum)
         splitfile = os.path.join(self.outputdir, splitfilename)
         if includeheader and not header:
             newline = True
             header = reader.readline()
-        writer = open(splitfile, mode='wb+')
+        writer = open(splitfile, mode="wb+")
         try:
             if header:
                 writer.write(header)
-                processed += len(header) if splitby == 'size' else 1
+                processed += len(header) if splitby == "size" else 1
             if carryover:
                 writer.write(carryover)
-                processed += len(carryover) if splitby == 'size' else 1
+                processed += len(carryover) if splitby == "size" else 1
                 carryover = None
-            if splitby == 'size':
+            if splitby == "size":
                 buffersize = Split._getreadbuffersize(splitsize=limit)
                 while 1:
                     if self.terminate:
-                        log.info('Term flag has been set by the user.')
-                        log.info('Terminating the process.')
+                        log.info("Term flag has been set by the user.")
+                        log.info("Terminating the process.")
                         break
                     if newline:
                         chunk = reader.readline()
@@ -206,11 +214,11 @@ class Split:
                     else:
                         carryover = chunk
                         break
-            elif splitby == 'linecount':
+            elif splitby == "linecount":
                 while 1:
                     if self.terminate:
-                        log.info('Term flag has been set by the user.')
-                        log.info('Terminating the process.')
+                        log.info("Term flag has been set by the user.")
+                        log.info("Terminating the process.")
                         break
                     chunk = reader.readline()
                     if not chunk:
@@ -222,30 +230,48 @@ class Split:
                         carryover = chunk
                         break
             else:
-                raise ValueError('Unsupported split type provided.')
+                raise ValueError("Unsupported split type provided.")
         finally:
             writer.close()
         splitsize = os.path.getsize(splitfile)
         if manifest:
             manifest.writerow(
-                {'filename': splitfilename, 'filesize': splitsize, 'header': includeheader})
+                {
+                    "filename": splitfilename,
+                    "filesize": splitsize,
+                    "header": includeheader,
+                }
+            )
         if callback:
             callback(splitfile, splitsize)
         if carryover:
             splitnum += 1
-            self._process(reader, limit, splitby, newline, includeheader, callback,
-                          splitnum=splitnum, carryover=carryover, header=header,
-                          manifest=manifest)
+            self._process(
+                reader,
+                limit,
+                splitby,
+                newline,
+                includeheader,
+                callback,
+                splitnum=splitnum,
+                carryover=carryover,
+                header=header,
+                manifest=manifest,
+            )
 
     def _endprocess(self):
-        """Runs statements that marks the completion of the process
-        """
+        """Runs statements that marks the completion of the process"""
         endtime = time.time()
-        runtime = int((endtime - self._starttime)/60)
-        log.info(f'Process completed in {runtime} min(s)')
+        runtime = int((endtime - self._starttime) / 60)
+        log.info(f"Process completed in {runtime} min(s)")
 
-    def bysize(self, size: int, newline: bool = False,
-               includeheader: bool = False, callback: Callable = None) -> None:
+    def bysize(
+        self,
+        size: int,
+        newline: bool = False,
+        includeheader: bool = False,
+        callback: Callable = None,
+    ) -> None:
         """Splits by size
 
         Args:
@@ -257,18 +283,29 @@ class Split:
             callback (Callable, optional): Callback function to invoke after each split that passes
                 split file path, size [str, int] as args. Defaults to None.
         """
-        with open(self.inputfile, mode='rb') as reader:
-            with open(self._getmanifestpath(), mode='w+', encoding='utf8', newline='') as writer:
-                fieldnames = ['filename', 'filesize', 'header']
+        with open(self.inputfile, mode="rb") as reader:
+            with open(
+                self._getmanifestpath(), mode="w+", encoding="utf8", newline=""
+            ) as writer:
+                fieldnames = ["filename", "filesize", "header"]
                 manifest = csv.DictWriter(
-                    writer, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+                    writer, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL
+                )
                 manifest.writeheader()
-                self._process(reader, size, 'size', newline,
-                              includeheader, callback, manifest=manifest)
+                self._process(
+                    reader,
+                    size,
+                    "size",
+                    newline,
+                    includeheader,
+                    callback,
+                    manifest=manifest,
+                )
         self._endprocess()
 
-    def bylinecount(self, linecount: int, includeheader: bool = False,
-                    callback: Callable = None) -> None:
+    def bylinecount(
+        self, linecount: int, includeheader: bool = False, callback: Callable = None
+    ) -> None:
         """Splits by line count
 
         Args:
@@ -278,39 +315,22 @@ class Split:
             callback (Callable, optional): Callback function to invoke after each split that passes
                 split file path, size [str, int] as args. Defaults to None.
         """
-        with open(self.inputfile, mode='rb') as reader:
-            with open(self._getmanifestpath(), mode='w+', encoding='utf8', newline='') as writer:
-                fieldnames = ['filename', 'filesize', 'header']
+        with open(self.inputfile, mode="rb") as reader:
+            with open(
+                self._getmanifestpath(), mode="w+", encoding="utf8", newline=""
+            ) as writer:
+                fieldnames = ["filename", "filesize", "header"]
                 manifest = csv.DictWriter(
-                    writer, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+                    writer, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL
+                )
                 manifest.writeheader()
-                self._process(reader, linecount, 'linecount', True,
-                              includeheader, callback, manifest=manifest)
+                self._process(
+                    reader,
+                    linecount,
+                    "linecount",
+                    True,
+                    includeheader,
+                    callback,
+                    manifest=manifest,
+                )
         self._endprocess()
-
-
-# if __name__ == '__main__':
-
-#     import threading
-#     import time
-
-#     inputfile = '/Users/rjayapalan/Downloads/test.txt'
-#     outputdir = '/Users/rjayapalan/Downloads/split_test'
-
-#     def cb(filepath: str, filesize: int):
-#         print(f'{filepath} : {filesize}')
-
-#     def terminatesplit(splitinstance: Split, after: int):
-#         time.sleep(after)
-#         splitinstance.terminate = True
-#         print('terminating')
-
-#     split = Split(inputfile, outputdir)
-
-#     th = threading.Thread(target=terminatesplit, args=(split, 1))
-#     th.daemon = True
-#     th.start()
-
-#     split.bysize(10, includeheader=True, callback=cb)
-
-#     th.join()
